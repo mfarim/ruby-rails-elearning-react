@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# Remove any pre-existing puma pid
+rm -f /app/tmp/pids/server.pid
+
+# Run migrations and seed data on startup if requested
+if [ "$AUTO_MIGRATE" = "true" ]; then
+  echo "Running database setup & migrations..."
+  bundle exec rails db:prepare || true
+fi
+
+if [ "$AUTO_SEED" = "true" ]; then
+  echo "Seeding demo records..."
+  bundle exec rails db:seed || true
+fi
+
+exec "$@"

@@ -1,0 +1,48 @@
+source "https://rubygems.org"
+
+ruby ">= 3.2.0"
+
+# Bundle Rails
+gem "rails", "~> 8.1.4"
+
+# Use postgresql as the database for Active Record
+gem "pg", "~> 1.5"
+
+# Use the Puma web server
+gem "puma", ">= 5.0"
+
+# Password hashing with BCrypt
+gem "bcrypt", "~> 3.1.7"
+
+# Stateless JWT Authentication
+gem "jwt", "~> 2.8"
+
+# Handling Cross-Origin Resource Sharing (CORS)
+gem "rack-cors"
+
+# Redis client for cache and Action Cable
+gem "redis", "~> 5.1"
+
+# Roo for reading Excel (.xlsx, .xls) files
+gem "roo", "~> 2.10"
+
+# Caxlsx for generating Excel spreadsheets
+gem "caxlsx", "~> 4.2"
+
+# Pagination
+gem "kaminari", "~> 1.2"
+
+# Windows tzinfo
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times
+gem "bootsnap", require: false
+
+group :development, :test do
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "rspec-rails", "~> 7.1"
+  gem "factory_bot_rails"
+  gem "database_cleaner-active_record"
+  gem "faker"
+  gem "rubocop-rails-omakase", require: false
+end
