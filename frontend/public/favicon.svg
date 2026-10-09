@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d1fae5" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+  </defs>
+  <!-- Squircle container -->
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)" />
+  
+  <!-- Graduation Cap -->
+  <path d="M32 14L48 21L32 28L16 21L32 14Z" fill="#ffffff" />
+  <path d="M22 25.5V32C22 35 26.5 37 32 37C37.5 37 42 35 42 32V25.5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  <path d="M44 23V34C44 35 46 36 46 34V23" stroke="#d1fae5" stroke-width="1.8" stroke-linecap="round" fill="none" />
+  <circle cx="46" cy="35" r="1.5" fill="#d1fae5" />
+
+  <!-- Open Book & Spring Leaf motif -->
+  <path d="M18 48C23 46 28 47 32 50C36 47 41 46 46 48V38C41 36 36 37 32 40C28 37 23 36 18 38V48Z" fill="#ffffff" fill-opacity="0.95" />
+  
+  <!-- Sprouting Spring Leaf -->
+  <path d="M32 46C32 46 37 40 37 34C37 31 34.5 29 32 29C29.5 29 27 31 27 34C27 40 32 46 32 46Z" fill="url(#leafGrad)" />
+  <path d="M32 32V44" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+</svg>
