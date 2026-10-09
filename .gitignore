@@ -1,0 +1,40 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/scripts/
+
+# Internal logs and documentation drafts
+docs/
+
+# Ruby & Rails
+backend/.bundle/
+backend/vendor/bundle/
+backend/log/*.log
+backend/tmp/
+backend/storage/uploads/*
+!backend/storage/uploads/.keep
+backend/coverage/
+backend/public/assets/
+backend/config/master.key
+
+# Docker & Persistence volumes
+.docker/
+postgres_data/
+redis_data/
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
