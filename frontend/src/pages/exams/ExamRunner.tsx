@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../api/client';
-import type { ExamStartResponse, ApiResponse } from '../../types';
+import { examService } from '../../services';
+import type { ExamStartResponse } from '../../types';
 import {
   Clock,
   AlertTriangle,
@@ -29,16 +29,39 @@ export const ExamRunner: React.FC = () => {
 
   // Submit / Finish states
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
-  const [submittedResult, setSubmittedResult] = useState<any>(null);
+  const [submittedResult, setSubmittedResult] = useState<{
+    score: number;
+    passed: boolean;
+    status: string;
+    totalQuestions: number;
+    answeredCount: number;
+  } | null>(null);
 
   const attemptIdRef = useRef<number | null>(null);
 
+  const handleSubmitExam = useCallback(async () => {
+    const attemptId = attemptIdRef.current;
+    if (!attemptId) return;
+
+    try {
+      setLoading(true);
+      const res = await examService.submitExam(attemptId);
+      setSubmittedResult(res);
+      setSubmitConfirmOpen(false);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to submit exam');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (!id) return;
+
     const startExam = async () => {
       try {
         setLoading(true);
-        const res = await api.post<ApiResponse<ExamStartResponse>>(`/exams/${id}/start`);
-        const data = res.data.data;
+        const data = await examService.startExam(Number(id));
         setSession(data);
         attemptIdRef.current = data.attemptId;
         setSecondsLeft(data.remainingSeconds);
@@ -65,10 +88,8 @@ export const ExamRunner: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && attemptIdRef.current && !submittedResult) {
-        api.post(`/exams/attempts/${attemptIdRef.current}/violation`, {
-          reason: 'TAB_SWITCH_OR_MINIMIZED',
-        }).then((res) => {
-          const count = res.data.data.violations;
+        examService.recordViolation(attemptIdRef.current).then((res) => {
+          const count = res.violations;
           setViolations(count);
           if (count >= 5) {
             alert('Maximum security violations reached (5). Your exam is being automatically submitted.');
@@ -89,7 +110,7 @@ export const ExamRunner: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [submittedResult]);
+  }, [submittedResult, handleSubmitExam]);
 
   // Timer Countdown
   useEffect(() => {
@@ -107,7 +128,7 @@ export const ExamRunner: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [secondsLeft, submittedResult]);
+  }, [secondsLeft, submittedResult, handleSubmitExam]);
 
   const handleSelectOption = async (questionId: number, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -115,30 +136,12 @@ export const ExamRunner: React.FC = () => {
     if (session?.attemptId) {
       setSaving(true);
       try {
-        await api.post(`/exams/attempts/${session.attemptId}/answer`, {
-          questionId,
-          answerText: value,
-        });
+        await examService.saveAnswer(session.attemptId, questionId, value);
       } catch (e) {
         console.error('Failed to autosave answer', e);
       } finally {
         setSaving(false);
       }
-    }
-  };
-
-  const handleSubmitExam = async () => {
-    if (!session?.attemptId) return;
-
-    try {
-      setLoading(true);
-      const res = await api.post(`/exams/attempts/${session.attemptId}/submit`);
-      setSubmittedResult(res.data.data);
-      setSubmitConfirmOpen(false);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to submit exam');
-    } finally {
-      setLoading(false);
     }
   };
 
