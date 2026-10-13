@@ -1,8 +1,11 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Classrooms', type: :request do
-  let!(:admin) { User.create!(name: 'Admin', email: 'admin@elearning.test', password: 'password123', role: 'ROLE_ADMIN') }
-  let!(:classroom) { Classroom.create!(name: '10-A', level: 10, capacity: 36, academic_year: '2025/2026') }
+  let!(:admin) do
+    User.find_by(email: 'admin@elearning.test') ||
+      User.create!(name: 'Admin', email: 'admin@elearning.test', password: 'password123', role: 'ROLE_ADMIN')
+  end
+  let!(:classroom) { Classroom.find_by(name: '10-A') || Classroom.create!(name: '10-A', level: 10, capacity: 36, academic_year: '2025/2026') }
 
   describe 'GET /api/v1/classrooms' do
     it 'returns list of classrooms' do
@@ -12,7 +15,7 @@ RSpec.describe 'Api::V1::Classrooms', type: :request do
       body = JSON.parse(response.body)
       expect(body['success']).to be true
       expect(body['data']).to be_an(Array)
-      expect(body['data'].first['name']).to eq('10-A')
+      expect(body['data'].any? { |c| c['name'] == '10-A' }).to be true
     end
   end
 

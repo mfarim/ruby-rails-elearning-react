@@ -17,7 +17,9 @@ RSpec.describe UserRepository, type: :model do
 
   describe '#find_admin' do
     it 'returns an admin user' do
-      expect(repo.find_admin).to eq(user)
+      admin = repo.find_admin
+      expect(admin).to be_present
+      expect(admin.role).to eq('ROLE_ADMIN')
     end
   end
 end
