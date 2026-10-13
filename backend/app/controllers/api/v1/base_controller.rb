@@ -37,6 +37,14 @@ module Api
         render_error("Forbidden: Student access required", status: :forbidden) unless @current_user&.student? || @current_user&.admin?
       end
 
+      def handle_result(result, message: "Success")
+        if result.success?
+          json_response(data: result.data, message: message, status: result.status)
+        else
+          render_error(result.error, status: result.status, errors: result.errors)
+        end
+      end
+
       def json_response(data: nil, message: "Success", status: :ok, errors: nil)
         camelized_data = camelize_keys(data.as_json)
 
