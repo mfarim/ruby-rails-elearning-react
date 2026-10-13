@@ -6,11 +6,11 @@ default: &default
 
 development:
   <<: *default
-  url: <%= ENV.fetch("DATABASE_URL") { "postgresql://postgres:postgres@localhost:5432/elearning" } %>
+  url: <%= ENV.fetch("DATABASE_URL") { "postgresql://postgres:postgres@localhost:5435/elearning" } %>
 
 test:
   <<: *default
-  url: <%= ENV.fetch("DATABASE_URL") { "postgresql://postgres:postgres@localhost:5432/elearning_test" } %>
+  url: <%= ENV.fetch("DATABASE_URL") { "postgresql://postgres:postgres@localhost:5435/elearning_test" } %>
 
 production:
   <<: *default

@@ -23,6 +23,9 @@ gem "rack-cors"
 # Redis client for cache and Action Cable
 gem "redis", "~> 5.1"
 
+# CSV gem (bundled gem in Ruby 3.4+)
+gem "csv"
+
 # Roo for reading Excel (.xlsx, .xls) files
 gem "roo", "~> 2.10"
 
