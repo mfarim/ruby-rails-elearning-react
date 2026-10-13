@@ -4,7 +4,7 @@ module Api
       before_action :set_classroom, only: [:show, :update, :destroy]
 
       def index
-        classrooms = Classroom.includes(:homeroom_teacher).order(:level, :name)
+        classrooms = classroom_repository.list_with_homeroom
         data = classrooms.map { |c| classroom_payload(c) }
         json_response(data: data)
       end
@@ -17,7 +17,7 @@ module Api
         require_admin!
         return if performed?
 
-        classroom = Classroom.create!(classroom_params)
+        classroom = classroom_repository.create!(classroom_params)
         json_response(data: classroom_payload(classroom), message: "Classroom created successfully", status: :created)
       end
 
@@ -33,14 +33,18 @@ module Api
         require_admin!
         return if performed?
 
-        @classroom.destroy!
+        classroom_repository.delete!(@classroom.id)
         json_response(data: nil, message: "Classroom deleted successfully")
       end
 
       private
 
+      def classroom_repository
+        @classroom_repository ||= ClassroomRepository.new
+      end
+
       def set_classroom
-        @classroom = Classroom.find(params[:id])
+        @classroom = classroom_repository.find(params[:id])
       end
 
       def classroom_params

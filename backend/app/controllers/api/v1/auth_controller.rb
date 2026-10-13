@@ -4,40 +4,22 @@ module Api
       skip_before_action :authenticate_user!, only: [:login, :register]
 
       def login
-        user = User.find_by(email: params[:email])
-        if user&.authenticate(params[:password])
-          token = JsonWebToken.encode(user_id: user.id)
-          json_response(data: build_auth_payload(user, token), message: "Login successful")
-        else
-          render_error("Invalid email or password", status: :unauthorized)
-        end
+        result = authenticate_user_use_case.call(
+          email: params[:email],
+          password: params[:password]
+        )
+        handle_result(result, message: "Login successful")
       end
 
       def register
-        User.transaction do
-          user = User.create!(
-            name: params[:name],
-            email: params[:email],
-            password: params[:password],
-            role: 'ROLE_STUDENT',
-            active: true
-          )
-
-          nis = params[:nis].presence || "NIS#{Time.current.to_i % 1000000}"
-          Student.create!(
-            user: user,
-            name: user.name,
-            email: user.email,
-            nis: nis,
-            gender: params[:gender].presence || 'M',
-            active: true
-          )
-
-          token = JsonWebToken.encode(user_id: user.id)
-          json_response(data: build_auth_payload(user, token), message: "Registration successful", status: :created)
-        end
-      rescue ActiveRecord::RecordInvalid => e
-        render_error(e.message, status: :unprocessable_entity)
+        result = register_student_use_case.call(
+          name: params[:name],
+          email: params[:email],
+          password: params[:password],
+          nis: params[:nis],
+          gender: params[:gender]
+        )
+        handle_result(result, message: "Registration successful")
       end
 
       def me
@@ -57,20 +39,32 @@ module Api
         require_admin!
         return if performed?
 
-        target_user = User.find(params[:user_id])
+        target_user = user_repository.find(params[:user_id])
         token = JsonWebToken.encode(user_id: target_user.id)
         payload = build_auth_payload(target_user, token, impersonated_by: current_user.id)
         json_response(data: payload, message: "Impersonation started successfully")
       end
 
       def stop_impersonate
-        admin_user = User.find_by(role: 'ROLE_ADMIN') || current_user
+        admin_user = user_repository.find_admin || current_user
         token = JsonWebToken.encode(user_id: admin_user.id)
         payload = build_auth_payload(admin_user, token)
         json_response(data: payload, message: "Returned to admin session")
       end
 
       private
+
+      def user_repository
+        @user_repository ||= UserRepository.new
+      end
+
+      def authenticate_user_use_case
+        @authenticate_user_use_case ||= Auth::AuthenticateUser.new(user_repo: user_repository)
+      end
+
+      def register_student_use_case
+        @register_student_use_case ||= Auth::RegisterStudent.new(user_repo: user_repository)
+      end
 
       def build_auth_payload(user, token, impersonated_by: nil)
         {
