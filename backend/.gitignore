@@ -31,3 +31,6 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# RSpec runtime files
+/spec/examples.txt
+

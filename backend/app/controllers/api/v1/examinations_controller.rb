@@ -4,16 +4,9 @@ module Api
       before_action :set_exam, only: [:show, :update, :destroy, :update_status, :questions, :create_question, :import_questions_excel]
 
       def index
-        scope = Examination.includes(:teacher, :subject, :classroom, :questions).order(start_at: :desc)
+        scope = examination_repository.list_for_user(current_user)
         student = current_user.student
-
-        if current_user.teacher?
-          scope = scope.where(teacher_id: current_user.teacher&.id)
-        elsif student
-          scope = scope.where(classroom_id: student.classroom_id, status: 'published')
-        end
-
-        attempts_map = student ? ExamAttempt.where(student_id: student.id).index_by(&:examination_id) : {}
+        attempts_map = exam_attempt_repository.attempts_map_for_student(student&.id)
 
         data = scope.map { |e| exam_payload(e, attempts_map[e.id]) }
         json_response(data: data)
@@ -21,7 +14,7 @@ module Api
 
       def show
         student = current_user.student
-        attempt = student ? ExamAttempt.find_by(examination: @exam, student: student) : nil
+        attempt = student ? exam_attempt_repository.find_by(examination: @exam, student: student) : nil
         json_response(data: exam_payload(@exam, attempt))
       end
 
@@ -187,8 +180,16 @@ module Api
 
       private
 
+      def examination_repository
+        @examination_repository ||= ExaminationRepository.new
+      end
+
+      def exam_attempt_repository
+        @exam_attempt_repository ||= ExamAttemptRepository.new
+      end
+
       def set_exam
-        @exam = Examination.find(params[:id])
+        @exam = examination_repository.find(params[:id])
       end
 
       def exam_payload(e, attempt = nil)

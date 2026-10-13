@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
-import type { Classroom, Teacher, ApiResponse } from '../../types';
+import { classroomService, teacherService } from '../../services';
+import type { Classroom, Teacher } from '../../types';
 import { Plus, Trash2, Edit2, GraduationCap, X } from 'lucide-react';
 
 export const Classrooms: React.FC = () => {
@@ -21,12 +21,12 @@ export const Classrooms: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [crRes, tRes] = await Promise.all([
-        api.get<ApiResponse<Classroom[]>>('/classrooms'),
-        api.get<ApiResponse<Teacher[]>>('/teachers'),
+      const [crData, tData] = await Promise.all([
+        classroomService.getAll(),
+        teacherService.getAll(),
       ]);
-      setClassrooms(crRes.data.data);
-      setTeachers(tRes.data.data);
+      setClassrooms(crData);
+      setTeachers(tData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -73,9 +73,9 @@ export const Classrooms: React.FC = () => {
       };
 
       if (editingClassroom) {
-        await api.put(`/classrooms/${editingClassroom.id}`, payload);
+        await classroomService.update(editingClassroom.id, payload);
       } else {
-        await api.post('/classrooms', payload);
+        await classroomService.create(payload);
       }
 
       setModalOpen(false);
@@ -87,7 +87,7 @@ export const Classrooms: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this classroom?')) {
-      await api.delete(`/classrooms/${id}`);
+      await classroomService.delete(id);
       loadData();
     }
   };

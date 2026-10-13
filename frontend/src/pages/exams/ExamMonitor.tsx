@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import api from '../../api/client';
-import type { Exam, ExamMonitorItem, ApiResponse } from '../../types';
+import { examService } from '../../services';
+import type { Exam, ExamMonitorItem } from '../../types';
 import {
   ArrowLeft,
   MonitorPlay,
@@ -24,21 +24,37 @@ export const ExamMonitor: React.FC = () => {
 
   const stompClientRef = useRef<Client | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
-      const [eRes, mRes] = await Promise.all([
-        api.get<ApiResponse<Exam>>(`/exams/${id}`),
-        api.get<ApiResponse<ExamMonitorItem[]>>(`/exams/${id}/monitor`),
+      const [eData, mData] = await Promise.all([
+        examService.getById(Number(id)),
+        examService.getMonitorData(Number(id)),
       ]);
-      setExam(eRes.data.data);
-      setAttempts(mRes.data.data);
+      setExam(eData);
+      setAttempts(mData);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  const handleRealtimeEvent = useCallback((event: any) => {
+    if (!id) return;
+    const { eventType, data } = event;
+
+    if (eventType === 'VIOLATION_REPORTED') {
+      setRecentAlert(`🚨 VIOLATION: Student ${data.studentName} flagged for ${data.reason}!`);
+      setTimeout(() => setRecentAlert(null), 6000);
+    }
+
+    // Refresh telemetry table
+    examService.getMonitorData(Number(id))
+      .then((items) => setAttempts(items))
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -75,21 +91,7 @@ export const ExamMonitor: React.FC = () => {
         stompClientRef.current.deactivate();
       }
     };
-  }, [id]);
-
-  const handleRealtimeEvent = (event: any) => {
-    const { eventType, data } = event;
-
-    if (eventType === 'VIOLATION_REPORTED') {
-      setRecentAlert(`🚨 VIOLATION: Student ${data.studentName} flagged for ${data.reason}!`);
-      setTimeout(() => setRecentAlert(null), 6000);
-    }
-
-    // Refresh telemetry table
-    api.get<ApiResponse<ExamMonitorItem[]>>(`/exams/${id}/monitor`)
-      .then((r) => setAttempts(r.data.data))
-      .catch(() => {});
-  };
+  }, [id, loadData, handleRealtimeEvent]);
 
   const activeCount = attempts.filter((a) => a.status === 'in_progress').length;
   const completedCount = attempts.filter((a) => a.status === 'completed' || a.status === 'submitted').length;

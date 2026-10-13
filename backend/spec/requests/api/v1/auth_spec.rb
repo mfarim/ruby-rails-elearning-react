@@ -1,7 +1,15 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Auth', type: :request do
-  let!(:user) { User.create!(name: 'Admin Test', email: 'admin@elearning.test', password: 'password123', role: 'ROLE_ADMIN') }
+  let!(:user) do
+    existing = User.find_by(email: 'admin@elearning.test')
+    if existing
+      existing.update!(password: 'password123')
+      existing
+    else
+      User.create!(name: 'Admin Test', email: 'admin@elearning.test', password: 'password123', role: 'ROLE_ADMIN')
+    end
+  end
 
   describe 'POST /api/v1/auth/login' do
     it 'returns JWT access token on valid credentials' do

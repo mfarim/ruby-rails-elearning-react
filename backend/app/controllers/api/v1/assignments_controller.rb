@@ -4,15 +4,8 @@ module Api
       before_action :set_assignment, only: [:show, :update, :destroy, :submit, :submissions, :discussions, :create_discussion]
 
       def index
-        scope = Assignment.includes(:teacher, :subject, :classroom).order(due_date: :asc)
+        scope = assignment_repository.list_for_user(current_user)
         student = current_user.student
-
-        if current_user.teacher?
-          scope = scope.where(teacher_id: current_user.teacher&.id)
-        elsif student
-          scope = scope.where(classroom_id: student.classroom_id, status: 'published')
-        end
-
         submissions_map = student ? AssignmentSubmission.where(student_id: student.id).index_by(&:assignment_id) : {}
 
         data = scope.map { |a| assignment_payload(a, submissions_map[a.id]) }
@@ -30,7 +23,7 @@ module Api
         return if performed?
 
         teacher = current_user.teacher || Teacher.first
-        assignment = Assignment.create!(
+        assignment = assignment_repository.create!(
           teacher: teacher,
           subject_id: params[:subjectId],
           classroom_id: params[:classroomId],
@@ -69,7 +62,7 @@ module Api
         require_teacher!
         return if performed?
 
-        @assignment.destroy!
+        assignment_repository.delete!(@assignment.id)
         json_response(data: nil, message: "Assignment deleted successfully")
       end
 
@@ -77,17 +70,18 @@ module Api
         require_student!
         return if performed?
 
-        student = current_user.student
-        return render_error("Student record not found") unless student
+        result = submit_assignment_use_case.call(
+          assignment_id: @assignment.id,
+          student: current_user.student,
+          file_path: params[:filePath],
+          notes: params[:notes]
+        )
 
-        sub = AssignmentSubmission.find_or_initialize_by(assignment: @assignment, student: student)
-        sub.file_path = params[:filePath] if params[:filePath].present?
-        sub.notes = params[:notes] if params[:notes].present?
-        sub.submitted_at = Time.current
-        sub.status = Time.current > @assignment.due_date ? 'late' : 'submitted'
-        sub.save!
-
-        json_response(data: submission_payload(sub), message: "Assignment submitted successfully")
+        if result.success?
+          json_response(data: submission_payload(result.data), message: "Assignment submitted successfully")
+        else
+          render_error(result.error, status: result.status, errors: result.errors)
+        end
       end
 
       def submissions
@@ -103,14 +97,17 @@ module Api
         require_teacher!
         return if performed?
 
-        sub = AssignmentSubmission.find(params[:submission_id])
-        sub.update!(
+        result = grade_assignment_use_case.call(
+          submission_id: params[:submission_id],
           score: params[:score],
-          feedback: params[:feedback],
-          graded_at: Time.current,
-          status: 'graded'
+          feedback: params[:feedback]
         )
-        json_response(data: submission_payload(sub), message: "Submission graded successfully")
+
+        if result.success?
+          json_response(data: submission_payload(result.data), message: "Submission graded successfully")
+        else
+          render_error(result.error, status: result.status, errors: result.errors)
+        end
       end
 
       def discussions
@@ -132,31 +129,43 @@ module Api
 
       private
 
+      def assignment_repository
+        @assignment_repository ||= AssignmentRepository.new
+      end
+
+      def submit_assignment_use_case
+        @submit_assignment_use_case ||= Assignments::SubmitAssignment.new(
+          assignment_repo: assignment_repository
+        )
+      end
+
+      def grade_assignment_use_case
+        @grade_assignment_use_case ||= Assignments::GradeAssignment.new
+      end
+
       def set_assignment
-        @assignment = Assignment.find(params[:id])
+        @assignment = assignment_repository.find(params[:id])
       end
 
       def assignment_payload(a, submission = nil)
         {
           id: a.id,
-          teacherId: a.teacher_id,
-          teacherName: a.teacher&.name,
+          title: a.title,
+          description: a.description,
+          instructions: a.instructions,
           subjectId: a.subject_id,
           subjectName: a.subject&.name,
           classroomId: a.classroom_id,
           classroomName: a.classroom&.name,
-          title: a.title,
-          description: a.description,
-          instructions: a.instructions,
+          teacherId: a.teacher_id,
+          teacherName: a.teacher&.name,
           maxScore: a.max_score,
           dueDate: a.due_date&.iso8601,
           allowLateSubmission: a.allow_late_submission,
           status: a.status,
-          createdAt: a.created_at&.iso8601,
-          hasSubmitted: submission.present?,
-          studentScore: submission&.score,
-          studentSubmissionStatus: submission&.status,
-          studentSubmittedAt: submission&.submitted_at&.iso8601
+          submissionsCount: a.submissions.count,
+          submission: submission ? submission_payload(submission) : nil,
+          createdAt: a.created_at&.iso8601
         }
       end
 
@@ -165,29 +174,27 @@ module Api
           id: s.id,
           assignmentId: s.assignment_id,
           studentId: s.student_id,
-          studentName: s.student.name,
-          studentNis: s.student.nis,
+          studentName: s.student&.name,
+          nis: s.student&.nis,
           filePath: s.file_path,
           notes: s.notes,
+          submittedAt: s.submitted_at&.iso8601,
           score: s.score,
           feedback: s.feedback,
-          status: s.status,
-          submittedAt: s.submitted_at&.iso8601,
-          gradedAt: s.graded_at&.iso8601
+          status: s.status
         }
       end
 
-      def discussion_payload(c, all_comments)
-        replies = all_comments.select { |r| r.parent_id == c.id }.map { |r| discussion_payload(r, all_comments) }
+      def discussion_payload(comment, all_comments)
+        replies = all_comments.select { |c| c.parent_id == comment.id }
         {
-          id: c.id,
-          assignmentId: c.assignment_id,
-          userId: c.user_id,
-          userName: c.user.name,
-          userRole: c.user.role,
-          message: c.message,
-          createdAt: c.created_at&.iso8601,
-          replies: replies
+          id: comment.id,
+          userId: comment.user_id,
+          userName: comment.user&.name,
+          userRole: comment.user&.role,
+          message: comment.message,
+          createdAt: comment.created_at&.iso8601,
+          replies: replies.map { |r| discussion_payload(r, all_comments) }
         }
       end
     end

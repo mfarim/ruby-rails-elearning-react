@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import api from '../api/client';
-import type { User, AuthResponse, ApiResponse } from '../types';
+import { authService } from '../services';
+import type { User } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -41,8 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true });
     try {
-      const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', { email, password });
-      const data = response.data.data;
+      const data = await authService.login(email, password);
 
       const user: User = {
         id: data.userId,
@@ -71,8 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   impersonate: async (userId: number) => {
-    const response = await api.post<ApiResponse<AuthResponse>>(`/admin/impersonate/${userId}`);
-    const data = response.data.data;
+    const data = await authService.impersonate(userId);
 
     const user: User = {
       id: data.userId,
@@ -91,8 +89,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   stopImpersonate: async () => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/admin/stop-impersonate');
-    const data = response.data.data;
+    const data = await authService.stopImpersonate();
 
     const user: User = {
       id: data.userId,
